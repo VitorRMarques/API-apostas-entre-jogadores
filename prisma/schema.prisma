@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Logs {
+  id        Int       @id @default(autoincrement())
+  usuarioId Int?
+  acao      String    @db.VarChar(100)
+  detalhes  String    @db.VarChar(255)
+  data      DateTime  @default(now())
+
+  usuario   Usuarios? @relation(fields: [usuarioId], references: [id])
+
+  @@map("logs")
+}
+
+model Usuarios {
+  id                 Int           @id @default(autoincrement())
+  jogadorId          Int?
+  email              String        @unique @db.VarChar(50)
+  senha              String        @db.VarChar(255)
+
+  status             String        @default("INATIVO")
+  codigoAtivacao     String        @db.VarChar(100)
+
+  ultimoLogin        DateTime?
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  jogador            Jogadores?    @relation(fields: [jogadorId], references: [id])
+  logs               Logs[]
+  
+  @@map("usuarios")
+}
+
+model Jogadores {
+  id             Int        @id @default(autoincrement())
+  usuarioId      Int?        
+  nome           String     @db.VarChar(40)
+  email          String     @db.VarChar(50) 
+  saldo          Decimal    @db.Decimal(9, 2)
+  mensagem       String?    @db.VarChar(50)
+
+  usuario  Usuarios[]
+
+  apostas  Apostas[] 
+  disputaComoJogador1 Disputas[] @relation("Jogador1")
+  disputaComoJogador2 Disputas[] @relation("Jogador2")
+  @@map("jogadores")
+}
+
+model Jogos {
+  id           Int     @id @default(autoincrement())
+  apostaMinima Decimal @db.Decimal(9, 2)
+  apostaMaxima Decimal @db.Decimal(9, 2)
+  apostas      Apostas[]
+  disputas     Disputas[]
+  @@map("jogos")
+}
+
+model Apostas {
+  id          Int       @id @default(autoincrement())
+  jogadores   Jogadores @relation(fields: [jogadorId], references: [id])
+  jogadorId Int
+  jogos       Jogos     @relation(fields: [jogoId], references: [id])
+  jogoId     Int
+  valor       Decimal   @db.Decimal(9,2)
+  data        DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamp(0)
+  status      String    @default("ativa")
+  Disputas  Disputas[] @relation("aposta1")
+  Disputas2 Disputas[] @relation("aposta2")
+  @@map("apostas")
+}
+
+model Disputas {
+  id           Int        @id @default(autoincrement())
+  jogoId       Int
+  jogos        Jogos      @relation(fields: [jogoId], references: [id])
+  aposta1Id    Int
+  aposta2id    Int
+  aposta1      Apostas    @relation("aposta1", fields: [aposta2id], references: [id])
+  aposta2      Apostas    @relation("aposta2", fields: [aposta1Id], references: [id])
+  somaApostas Decimal    @db.Decimal(9, 2)
+
+  jogador1id  Int
+  jogador1    Jogadores  @relation("Jogador1", fields: [jogador1id], references: [id])
+
+  jogador2id  Int
+  jogador2    Jogadores  @relation("Jogador2", fields: [jogador2id], references: [id])
+
+  tipoJogo    TipoJogos
+}
+
+enum TipoJogos {
+  Roleta
+  Blackjack
+  Poker
+  Slots
+}
+
